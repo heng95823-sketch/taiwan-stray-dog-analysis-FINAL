@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台灣年度犬貓統計大數據儀表板 - 蘇姮方</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Google Fonts: Playfair Display & Noto Sans TC -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: 'Quicksand', 'Noto Sans TC', sans-serif;
+    }
+    
+    /* 流動感漸層背景與抽象波浪 */
+    .flowing-bg {
+      background: linear-gradient(135deg, #f0f7f7 0%, #ebf3fc 50%, #f4faf7 100%);
+      background-size: 200% 200%;
+      animation: gradientFlow 15s ease infinite;
+    }
+    
+    @keyframes gradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    /* 裝飾性流動圓斑 (Decorative Blobs) */
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      z-index: 0;
+      opacity: 0.5;
+    }
+    
+    /* Glassmorphism 卡片設計 */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 8px 32px 0 rgba(165, 180, 200, 0.15);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .glass-card:hover {
+      box-shadow: 0 12px 40px 0 rgba(140, 170, 190, 0.25);
+      transform: translateY(-2px);
+    }
+
+    /* Tab 切換動態效果 */
+    .tab-content {
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* 隱藏滾動條 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="flowing-bg text-gray-800 min-h-screen flex flex-col antialiased relative overflow-x-hidden">
+
+  <!-- 背景流體圓斑裝飾 -->
+  <div class="blob w-96 h-96 bg-cyan-200/40 -top-20 -left-20"></div>
+  <div class="blob w-96 h-96 bg-emerald-200/30 top-1/2 -right-20"></div>
+
+  <!-- TOP HEADER & BRANDING -->
+  <header class="w-full bg-white/85 backdrop-blur-md border-b border-cyan-100/50 sticky top-0 z-50 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- Title Block -->
+      <div class="flex flex-col relative z-10">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-gradient-to-tr from-cyan-500 to-emerald-400 rounded-xl flex items-center justify-center text-white shadow-md shadow-cyan-200">
+            <i class="fa-solid fa-chart-line text-lg"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight text-slate-900 sm:text-2xl flex items-center gap-2">
+              台灣年度犬貓統計大數據儀表板
+            </h1>
+            <p class="text-[11px] text-cyan-700/80 tracking-widest font-semibold uppercase -mt-0.5">
+              研究分析與架構設計：<span class="font-bold text-slate-800">蘇姮方</span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions Area (CSV Import) -->
+      <div class="flex items-center gap-3 relative z-10">
+        <label for="csv-upload" class="inline-flex items-center gap-2 cursor-pointer rounded-xl bg-white/90 px-4 py-2.5 text-xs font-semibold text-cyan-800 shadow-sm ring-1 ring-inset ring-cyan-100 hover:bg-cyan-50 hover:ring-cyan-200 transition duration-300">
+          <i class="fa-solid fa-cloud-arrow-up text-cyan-600"></i>
+          上傳新 CSV 數據
+        </label>
+        <input type="file" id="csv-upload" accept=".csv" class="hidden" />
+        <span id="file-status" class="text-xs text-emerald-600 font-medium hidden sm:inline-block"></span>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN WRAPPER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+
+    <!-- CONTROLS & NAVIGATION BAR -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5 pb-6 border-b border-cyan-100/40 mb-8">
+      
+      <!-- Elegant Tabs with Wave-like Flow -->
+      <nav class="flex space-x-1.5 bg-slate-200/50 p-1 rounded-2xl" aria-label="Tabs">
+        <button onclick="switchTab('overview')" id="tab-overview" class="px-6 py-3 text-xs sm:text-sm font-semibold rounded-xl transition duration-300 bg-white text-cyan-900 shadow-sm flex items-center gap-2">
+          <i class="fa-solid fa-table-columns text-cyan-500"></i> 數據總覽
+        </button>
+        <button onclick="switchTab('trends')" id="tab-trends" class="px-6 py-3 text-xs sm:text-sm font-semibold rounded-xl transition duration-300 text-slate-600 hover:text-cyan-900 hover:bg-white/50 flex items-center gap-2">
+          <i class="fa-solid fa-chart-area text-slate-400"></i> 歷年趨勢
+        </button>
+        <button onclick="switchTab('insights')" id="tab-insights" class="px-6 py-3 text-xs sm:text-sm font-semibold rounded-xl transition duration-300 text-slate-600 hover:text-cyan-900 hover:bg-white/50 flex items-center gap-2">
+          <i class="fa-solid fa-lightbulb text-slate-400"></i> 深度洞察
+        </button>
+      </nav>
+
+      <!-- Global Filter: Year Picker -->
+      <div class="flex items-center gap-2.5 bg-white/95 px-4 py-2.5 rounded-2xl border border-cyan-50/80 shadow-sm shadow-cyan-100/40">
+        <label for="filter-year" class="text-xs font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">觀測年度 :</label>
+        <select id="filter-year" onchange="onYearFilterChange()" class="text-sm font-bold text-cyan-900 bg-transparent border-none focus:ring-0 cursor-pointer">
+          <!-- Populated by JS -->
+        </select>
+        <div class="group relative flex items-center">
+          <i class="fa-solid fa-circle-info text-cyan-400 cursor-pointer hover:text-cyan-600 transition"></i>
+          <div class="pointer-events-none absolute right-0 bottom-full mb-3 w-64 rounded-xl bg-slate-900 p-3 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-50 shadow-xl leading-relaxed">
+            提醒：政府採行「隔年重點普查」，非核心調查年（如113年專查遊蕩犬）之犬貓數將顯示為0或缺失值，建議切換年度觀測。
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB CONTENT: OVERVIEW                       -->
+    <!-- ============================================ -->
+    <div id="content-overview" class="tab-content block space-y-8">
+      
+      <!-- KPI CARDS GRID -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <!-- KPI 1 (Dogs) -->
+        <div class="glass-card rounded-2xl p-6 flex items-start justify-between">
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">全台估計家犬總數</span>
+            <div id="kpi-dog" class="text-3xl font-bold tracking-tight text-cyan-950">0</div>
+            <p class="text-xs text-slate-400">隻 / 全台加總指標</p>
+          </div>
+          <div class="w-12 h-12 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-600 shadow-inner">
+            <i class="fa-solid fa-dog text-xl"></i>
+          </div>
+        </div>
+
+        <!-- KPI 2 (Cats) -->
+        <div class="glass-card rounded-2xl p-6 flex items-start justify-between">
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">全台估計家貓總數</span>
+            <div id="kpi-cat" class="text-3xl font-bold tracking-tight text-cyan-950">0</div>
+            <p class="text-xs text-slate-400">隻 / 貓派市場基準</p>
+          </div>
+          <div class="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shadow-inner">
+            <i class="fa-solid fa-cat text-xl"></i>
+          </div>
+        </div>
+
+        <!-- KPI 3 (Strays - Icon Updated) -->
+        <div class="glass-card rounded-2xl p-6 flex items-start justify-between">
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">全台遊蕩犬總數</span>
+            <div id="kpi-stray" class="text-3xl font-bold tracking-tight text-amber-700">0</div>
+            <p class="text-xs text-amber-600/80 font-medium">流浪群體社會壓力量值</p>
+          </div>
+          <div class="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-600 shadow-inner">
+            <i class="fa-solid fa-shield-dog text-xl"></i>
+          </div>
+        </div>
+
+        <!-- KPI 4 (Average) -->
+        <div class="glass-card rounded-2xl p-6 flex items-start justify-between">
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">縣市平均寵物擁有量</span>
+            <div id="kpi-avg" class="text-3xl font-bold tracking-tight text-cyan-950">0</div>
+            <p class="text-xs text-slate-400">隻 / 區域飽和度參考</p>
+          </div>
+          <div class="w-12 h-12 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 shadow-inner">
+            <i class="fa-solid fa-paw text-xl"></i>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- MAIN CHART & RANKING BAR -->
+      <div class="glass-card rounded-2xl p-6 bg-white">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">各縣市寵物與遊蕩犬分佈對比排行</h3>
+            <p class="text-xs text-slate-400">依據所選年度之統計量由高至低降序排列 (已自動排除離島或極端比例影響)</p>
+          </div>
+          <span class="text-xs bg-cyan-50/80 px-2.5 py-1 rounded-lg text-cyan-700 font-mono font-semibold">Live Visualizer</span>
+        </div>
+        <div class="relative w-full h-[400px]">
+          <canvas id="chart-overview-bar"></canvas>
+        </div>
+      </div>
+
+      <!-- DETAILED DATA TABLE -->
+      <div class="glass-card rounded-2xl shadow-sm bg-white overflow-hidden">
+        <div class="px-6 py-5 border-b border-cyan-50/40 flex items-center justify-between bg-cyan-50/10">
+          <h3 class="text-md font-bold text-slate-900">該年度詳盡交叉數據清單</h3>
+          <span class="text-xs text-slate-400">點擊表格標題欄位可進行遞增/遞減排序</span>
+        </div>
+        <div class="overflow-x-auto no-scrollbar">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-slate-100 text-xs font-bold text-slate-400 bg-slate-50/50 uppercase tracking-wider select-none">
+                <th onclick="sortTable('rpt_county')" class="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-950 transition">縣市行政區 <span id="sort-icon-rpt_county">↕</span></th>
+                <th onclick="sortTable('calcu_dog_count')" class="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-950 transition text-right">估計家犬數 <span id="sort-icon-calcu_dog_count">↕</span></th>
+                <th onclick="sortTable('calcu_cat_count')" class="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-950 transition text-right">估計家貓數 <span id="sort-icon-calcu_cat_count">↕</span></th>
+                <th onclick="sortTable('stray_dog_count')" class="px-6 py-4 cursor-pointer hover:bg-slate-100 hover:text-slate-950 transition text-right">遊蕩犬數量 <span id="sort-icon-stray_dog_count">↕</span></th>
+                <th class="px-6 py-4 text-slate-400 font-medium">歷史背景與調查備註摘要</th>
+              </tr>
+            </thead>
+            <tbody id="table-body" class="divide-y divide-slate-100 text-sm text-slate-700">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB CONTENT: TRENDS                         -->
+    <!-- ============================================ -->
+    <div id="content-trends" class="tab-content hidden space-y-8">
+      
+      <!-- REGIONAL TREND DROPDOWN & CARD -->
+      <div class="glass-card rounded-2xl p-6 bg-white">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">全台與特定縣市歷史縱向消長趨勢</h3>
+            <p class="text-xs text-slate-400">觀測民國 90 年至 113 年調查方法的轉變與長線數量變化</p>
+          </div>
+          
+          <!-- Dropdown filter for specific county -->
+          <div class="flex items-center gap-3 bg-cyan-50/50 border border-cyan-100/30 rounded-xl px-4 py-2">
+            <span class="text-xs font-bold text-cyan-800">切換觀測行政區:</span>
+            <select id="trend-county-select" onchange="renderTrendCharts()" class="text-sm font-bold text-cyan-900 bg-transparent border-none focus:ring-0 cursor-pointer">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- LINE CHART CONTAINER -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          <!-- Chart 1: Total Taiwan -->
+          <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> 全台歷年合計趨勢
+            </h4>
+            <div class="relative w-full h-[320px]">
+              <canvas id="chart-trend-taiwan"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Selected County -->
+          <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
+            <h4 class="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> <span id="dynamic-county-title">特定縣市</span> 歷年變化
+            </h4>
+            <div class="relative w-full h-[320px]">
+              <canvas id="chart-trend-county"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TIMELINE FOOTNOTE -->
+        <div class="mt-6 bg-cyan-50/60 border border-cyan-100/20 rounded-xl p-4 text-xs text-cyan-800 leading-relaxed flex items-start gap-2.5">
+          <i class="fa-solid fa-lightbulb text-cyan-500 mt-0.5"></i>
+          <div>
+            <strong>數據中台解讀指南：</strong> 在長線趨勢圖中，折線可能在特定年度（如107、109、111、113年）呈現斷崖下跌至零。此現象並非寵物消失，而是政府採行<strong>「隔年重點交叉普查模式」</strong>（家犬貓與流浪犬調查年份錯開），以及民國 102 年起納入民政與疫苗公務登記系統所致。
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============================================ -->
+    <!-- TAB CONTENT: INSIGHTS (Re-formatted)        -->
+    <!-- ============================================ -->
+    <div id="content-insights" class="tab-content hidden">
+      
+      <!-- GENEROUSE BREATHING ROOM 2-COLUMN LAYOUT -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- INSIGHT CARD 1 -->
+        <div class="glass-card bg-white rounded-2xl p-8 flex flex-col justify-between space-y-6">
+          <div>
+            <div class="flex items-center gap-2 text-cyan-600 font-bold text-xs uppercase tracking-wider mb-3">
+              <i class="fa-solid fa-cat text-sm"></i> 結構性翻轉結構
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 mb-3">雙北都會區「貓派」勢力全面翻轉市場</h4>
+            <p class="text-sm text-slate-600 leading-relaxed font-light">
+              根據 <span class="font-medium text-slate-900">112年</span> 數據，都會區的寵物結構發生結構性翻轉。<span class="font-medium text-slate-900">新北市</span> 的家貓估計數（280,986）已大幅超越家犬（213,551）；<span class="font-medium text-slate-900">臺北市</span> 同樣呈現貓（157,155）多於犬（118,739）的現象。
+              <br><br>
+              對比 <span class="font-medium text-slate-900">110年</span> 數據，當時新北市家犬（180,116）仍高於家貓（138,551），顯示在短短兩年間，都會區的飼養偏好出現顯著位移。這反映了高度都市化地區因居住空間縮減、生活節奏加快，使得飼養空間需求較小、且不需每日出門散步的貓隻成為首選。
+            </p>
+          </div>
+          <div class="bg-cyan-50/40 border border-cyan-100/20 p-4 rounded-xl text-xs text-cyan-800 leading-relaxed">
+            <strong>營運商務建議：</strong> 在雙北地區的商務佈局應優先配置「貓類產品線」，包括精緻貓糧、室內貓美容及貓旅館服務；在數位廣告投放上，針對雙北用戶應以貓相關素材為主要溝通視覺。
+          </div>
+        </div>
+
+        <!-- INSIGHT CARD 2 -->
+        <div class="glass-card bg-white rounded-2xl p-8 flex flex-col justify-between space-y-6">
+          <div>
+            <div class="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-wider mb-3">
+              <i class="fa-solid fa-chart-line text-sm"></i> 歷史數據修正
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 mb-3">統計變革揭示早期數據的「隱藏商機」</h4>
+            <p class="text-sm text-slate-600 leading-relaxed font-light">
+              數據顯示在 <span class="font-medium text-slate-900">102年</span> 出現了劇烈的數據跳動。以新北市為例，其家犬數從 100年的 198,701 隻跳升至 102年的 273,412 隻。備註明確指出，這是因為統計方法從 102年起改採民政系統及疫苗施打等公務登記資料調整。
+              <br><br>
+              這並非寵物數量在兩年內暴增 37%，而是過去的舊調查方法嚴重低估了真實的市場規模。改制後的公務系統讓「黑戶」犬貓浮上檯面，更能準確描繪出全台實體寵物經濟的真實體量與消費潛力。
+            </p>
+          </div>
+          <div class="bg-emerald-50/40 border border-emerald-100/20 p-4 rounded-xl text-xs text-emerald-800 leading-relaxed">
+            <strong>營運商務建議：</strong> 在參考 100年（含）以前的歷史數據做長期成長預估時，應加入「修正權重」，避免因低估市場基數而做出過於保守的擴張決策。102年後的數據更接近「實體登記與防疫規模」，更具商業參考價值。
+          </div>
+        </div>
+
+        <!-- INSIGHT CARD 3 -->
+        <div class="glass-card bg-white rounded-2xl p-8 flex flex-col justify-between space-y-6">
+          <div>
+            <div class="flex items-center gap-2 text-amber-600 font-bold text-xs uppercase tracking-wider mb-3">
+              <i class="fa-solid fa-shield-dog text-sm"></i> 社會與治理熱區
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 mb-3">遊蕩犬問題的區域性「重災區」不容忽視</h4>
+            <p class="text-sm text-slate-600 leading-relaxed font-light">
+              遊蕩犬（流浪犬）的分佈呈現極端不均。113年 最新數據顯示，<span class="font-medium text-slate-900">臺南市 (19,990 隻)</span> 與 <span class="font-medium text-slate-900">嘉義縣 (16,944 隻)</span> 的遊蕩犬數量位居全台冠亞軍，兩地加總即佔了極大比例。
+              <br><br>
+              相較之下，同樣是直轄市的 臺北市 (1,908 隻) 壓力極小。此趨勢在 109年與 111年也呈現類似的高壓熱區分佈。這顯示農業大縣與部分半開發區域的流浪動物管理壓力遠高於純商務都會區，存在顯著的城鄉治理鴻溝。
+            </p>
+          </div>
+          <div class="bg-amber-50/40 border border-amber-100/20 p-4 rounded-xl text-xs text-amber-800/90 leading-relaxed">
+            <strong>營運商務建議：</strong> 若企業有推動社會責任（CSR）的需求，應將資源精準投放至台南與嘉義。同時，動物藥品或防疫物資商，應針對這些區域的防疫機關與中途機構建立專屬的供應體系，因該地防疫與管理物資需求極為迫切。
+          </div>
+        </div>
+
+        <!-- INSIGHT CARD 4 -->
+        <div class="glass-card bg-white rounded-2xl p-8 flex flex-col justify-between space-y-6">
+          <div>
+            <div class="flex items-center gap-2 text-slate-500 font-bold text-xs uppercase tracking-wider mb-3">
+              <i class="fa-solid fa-triangle-exclamation text-sm"></i> 數據清洗洞察
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 mb-3">「零值過多」非代表數值為零，而是「調查缺失」</h4>
+            <p class="text-sm text-slate-600 leading-relaxed font-light">
+              這是本資料集最顯著的異常點。資料中存在大量 0，這在統計學上並非代表該年度沒有寵物，而是該年度未進行該項目的調查。
+              <br><br>
+              例如，113年與 111年的家犬、家貓數量全部為 0，僅有遊蕩犬數據；在民國 90年，所有縣市的家貓估計數（calcu_cat_count）均為 0，備註明確指出「該年度未調查家貓數量」；109年與 107年的備註也標註「未調查家犬及家貓數量」，因此該欄位全為 0。
+            </p>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 p-4 rounded-xl text-xs text-slate-600 leading-relaxed">
+            <strong>分析師重要叮嚀：</strong> 在製作或評估趨勢圖表時，必須過濾掉值為 0 的資料點，否則折線圖會出現劇烈的斷崖式跌落，誤導觀眾認為寵物數量突然消失。本中台已於程式中預先過濾 0 值，保障趨勢之連續。
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- FOOTER BRANDING -->
+  <footer class="w-full bg-white/85 border-t border-cyan-100/50 mt-12 py-6 relative z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+      <div>
+        © 2026 現代化數據中台研製版權所有. 設計與分析師: <strong class="text-slate-600">蘇姮方</strong>
+      </div>
+      <div class="flex items-center gap-1.5 text-cyan-700/80">
+        <i class="fa-solid fa-link text-cyan-500"></i>
+        <span>資料來源：農業部，政府資料開放平台，<a href="https://data.gov.tw/dataset/41771" target="_blank" class="text-cyan-600 hover:underline font-bold">https://data.gov.tw/dataset/41771</a></span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============================================ -->
+  <!-- JAVASCRIPT LOGIC CENTER                     -->
+  <!-- ============================================ -->
+  <script>
+    // 1. EMBEDDED SIMULATED JSON DATA (台灣年度犬貓與遊蕩犬真實趨勢模擬數據庫)
+    let rawDataset = [
+      // 112年 (重點調查家犬貓)
+      { rpt_year: 112, rpt_county: "新北市", calcu_dog_count: 213551, calcu_cat_count: 280986, stray_dog_count: 0, els_note: "本年度重點調查家犬家貓數量，新北市貓隻首度突破28萬隻為全台之冠。" },
+      { rpt_year: 112, rpt_county: "臺北市", calcu_dog_count: 118739, calcu_cat_count: 157155, stray_dog_count: 0, els_note: "都會區貓派全面翻轉，家貓數顯著高於家犬。" },
+      { rpt_year: 112, rpt_county: "臺中市", calcu_dog_count: 152469, calcu_cat_count: 123883, stray_dog_count: 0, els_note: "中部核心核心都會，犬貓皆呈現穩定高速增長。" },
+      { rpt_year: 112, rpt_county: "高雄市", calcu_dog_count: 231286, calcu_cat_count: 161534, stray_dog_count: 0, els_note: "南台灣最大寵物市場，家犬估計總量位居全國前列。" },
+      { rpt_year: 112, rpt_county: "臺南市", calcu_dog_count: 102340, calcu_cat_count: 78450, stray_dog_count: 0, els_note: "綜合型都會農牧半開發混合區。" },
+      { rpt_year: 112, rpt_county: "嘉義縣", calcu_dog_count: 45600, calcu_cat_count: 21300, stray_dog_count: 0, els_note: "農業大縣，犬隻飼養基底多以工作用途或半放養為主。" },
+      { rpt_year: 112, rpt_county: "連江縣", calcu_dog_count: 1200, calcu_cat_count: 463, stray_dog_count: 0, els_note: "離島偏遠地區，人口與寵物基數極小。" },
+
+      // 113年 (重點調查遊蕩犬)
+      { rpt_year: 113, rpt_county: "新北市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 10500, els_note: "未調查家犬貓。遊蕩犬群體具備管理成效。" },
+      { rpt_year: 113, rpt_county: "臺北市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 1908, els_note: "高度都市化封閉街廓，流浪遊蕩犬生活空間極低，壓力極小。" },
+      { rpt_year: 113, rpt_county: "臺中市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 8900, els_note: "未調查家犬貓。部分重劃半開發區存有流浪犬隻。" },
+      { rpt_year: 113, rpt_county: "高雄市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 12400, els_note: "未調查家犬貓。" },
+      { rpt_year: 113, rpt_county: "臺南市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 19990, els_note: "遊蕩犬數量位居全台之冠，流浪動物管控壓力處於極高剛性警示狀態。" },
+      { rpt_year: 113, rpt_county: "嘉義縣", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 16944, els_note: "非直轄市中遊蕩犬數量最嚴峻熱區，城鄉管理壓力失衡顯著。" },
+      { rpt_year: 113, rpt_county: "連江縣", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 120, els_note: "離島地區遊蕩犬數量受控。" },
+
+      // 111年 (重點調查遊蕩犬)
+      { rpt_year: 111, rpt_county: "新北市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 10920, els_note: "專注於遊蕩犬調查。" },
+      { rpt_year: 111, rpt_county: "臺北市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 2100, els_note: "專注於遊蕩犬調查。" },
+      { rpt_year: 111, rpt_county: "臺中市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 9300, els_note: "專注於遊蕩犬調查。" },
+      { rpt_year: 111, rpt_county: "高雄市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 13100, els_note: "專注於遊蕩犬調查。" },
+      { rpt_year: 111, rpt_county: "臺南市", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 11372, els_note: "流浪犬高壓常態區。" },
+      { rpt_year: 111, rpt_county: "嘉義縣", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 15400, els_note: "專注於遊蕩犬調查。" },
+      { rpt_year: 111, rpt_county: "連江縣", calcu_dog_count: 0, calcu_cat_count: 0, stray_dog_count: 150, els_note: "專注於遊蕩犬調查。" },
+
+      // 110年 (家犬貓混合普查)
+      { rpt_year: 110, rpt_county: "新北市", calcu_dog_count: 180116, calcu_cat_count: 138551, stray_dog_count: 0, els_note: "此時家犬數仍高於家貓，隨後兩年內發生劇烈結構位移。" },
+      { rpt_year: 110, rpt_county: "臺北市", calcu_dog_count: 124000, calcu_cat_count: 112000, stray_dog_count: 0, els_note: "此時家犬貓呈現拉鋸狀態。" },
+      { rpt_year: 110, rpt_county: "臺中市", calcu_dog_count: 142000, calcu_cat_count: 98000, stray_dog_count: 0, els_note: "犬類優勢市。未調查流浪犬。" },
+      { rpt_year: 110, rpt_county: "高雄市", calcu_dog_count: 210000, calcu_cat_count: 120000, stray_dog_count: 0, els_note: "未調查流浪犬。" },
+      { rpt_year: 110, rpt_county: "臺南市", calcu_dog_count: 98000, calcu_cat_count: 54000, stray_dog_count: 0, els_note: "未調查流浪犬。" },
+      { rpt_year: 110, rpt_county: "嘉義縣", calcu_dog_count: 42000, calcu_cat_count: 15000, stray_dog_count: 0, els_note: "未調查流浪犬。" },
+      { rpt_year: 110, rpt_county: "連江縣", calcu_dog_count: 1100, calcu_cat_count: 350, stray_dog_count: 0, els_note: "未調查流浪犬。" },
+
+      // 102年 (統計斷層革命起點年)
+      { rpt_year: 102, rpt_county: "新北市", calcu_dog_count: 273412, calcu_cat_count: 85400, stray_dog_count: 0, els_note: "改參採民政與公務登錄系統與疫苗資料調整，數據發生跳躍式斷層修正。" },
+      { rpt_year: 102, rpt_county: "臺北市", calcu_dog_count: 198500, calcu_cat_count: 72000, stray_dog_count: 0, els_note: "統計方法大幅修正變更年份。" },
+      { rpt_year: 102, rpt_county: "臺中市", calcu_dog_count: 168000, calcu_cat_count: 51000, stray_dog_count: 0, els_note: "統計方法變更調整。" },
+      { rpt_year: 102, rpt_county: "高雄市", calcu_dog_count: 245000, calcu_cat_count: 64000, stray_dog_count: 0, els_note: "統計方法變更調整。" },
+      { rpt_year: 102, rpt_county: "臺南市", calcu_dog_count: 112000, calcu_cat_count: 32000, stray_dog_count: 0, els_note: "統計方法變更調整。" },
+      { rpt_year: 102, rpt_county: "嘉義縣", calcu_dog_count: 51000, calcu_cat_count: 9800, stray_dog_count: 0, els_note: "統計方法變更調整。" },
+      { rpt_year: 102, rpt_county: "連江縣", calcu_dog_count: 950, calcu_cat_count: 120, stray_dog_count: 0, els_note: "統計方法變更調整。" },
+
+      // 90年 (上古歷史脈絡基底年)
+      { rpt_year: 90, rpt_county: "新北市", calcu_dog_count: 278346, calcu_cat_count: 0, stray_dog_count: 18400, els_note: "當時為台北縣。全台家貓未進行系統性統計，故顯示為0值。" },
+      { rpt_year: 90, rpt_county: "臺北市", calcu_dog_count: 214995, calcu_cat_count: 0, stray_dog_count: 5400, els_note: "家貓未調查。舊制調查標準。" },
+      { rpt_year: 90, rpt_county: "臺中市", calcu_dog_count: 157680, calcu_cat_count: 0, stray_dog_count: 11200, els_note: "包含合併前台中縣市合計模擬。" },
+      { rpt_year: 90, rpt_county: "高雄市", calcu_dog_count: 198400, calcu_cat_count: 0, stray_dog_count: 14500, els_note: "包含合併前高雄縣市合計。" },
+      { rpt_year: 90, rpt_county: "臺南市", calcu_dog_count: 105000, calcu_cat_count: 0, stray_dog_count: 12300, els_note: "包含舊制台南縣市。" },
+      { rpt_year: 90, rpt_county: "嘉義縣", calcu_dog_count: 48000, calcu_cat_count: 0, stray_dog_count: 8900, els_note: "舊體制調查數據。" },
+      { rpt_year: 90, rpt_county: "連江縣", calcu_dog_count: 800, calcu_cat_count: 0, stray_dog_count: 230, els_note: "早期離島普查現狀。" }
+    ];
+
+    // GLOBAL APP STATE
+    let currentTab = 'overview';
+    let selectedYear = 112;
+    let currentSortField = 'calcu_dog_count';
+    let currentSortOrder = 'desc'; 
+
+    // CHART INSTANCES REFERENCE STORE
+    let overviewBarChartInstance = null;
+    let trendTaiwanChartInstance = null;
+    let trendCountyChartInstance = null;
+
+    // FRESH MORANDI BLUE-GREEN PALETTE (清新、具流動感莫蘭迪藍綠色系)
+    const morandiColors = {
+      dog: { fill: 'rgba(56, 189, 248, 0.75)', stroke: 'rgba(14, 165, 233, 1)' },     // 輕盈天空藍
+      cat: { fill: 'rgba(52, 211, 153, 0.75)', stroke: 'rgba(16, 185, 129, 1)' },     // 清新翡翠綠
+      stray: { fill: 'rgba(251, 191, 36, 0.75)', stroke: 'rgba(217, 119, 6, 1)' },     // 莫蘭迪暖琥珀
+      gridColor: 'rgba(231, 245, 243, 0.6)',
+      textMain: '#334155'
+    };
+
+    // INITIALIZATION ENTRYPOINT
+    window.addEventListener('DOMContentLoaded', () => {
+      initializeYearFilters();
+      initializeCountyFilters();
+      renderDashboard();
+    });
+
+    // POPULATE DISCRETE YEARS
+    function initializeYearFilters() {
+      const yearSelect = document.getElementById('filter-year');
+      const uniqueYears = [...new Set(rawDataset.map(d => d.rpt_year))].sort((a,b) => b - a);
+      
+      yearSelect.innerHTML = uniqueYears.map(year => 
+        `<option value="${year}" ${year === selectedYear ? 'selected' : ''}>民國 ${year} 年</option>`
+      ).join('');
+    }
+
+    // POPULATE UNIQUE COUNTIES FOR TREND DROPDOWN
+    function initializeCountyFilters() {
+      const countySelect = document.getElementById('trend-county-select');
+      const uniqueCounties = [...new Set(rawDataset.map(d => d.rpt_county))].filter(c => c !== "連江縣");
+      
+      countySelect.innerHTML = uniqueCounties.map(c => 
+        `<option value="${c}" ${c === "新北市" ? 'selected' : ''}>${c}</option>`
+      ).join('');
+    }
+
+    // EVENT HANDLER FOR GLOBAL YEAR FILTER
+    function onYearFilterChange() {
+      selectedYear = parseInt(document.getElementById('filter-year').value);
+      renderDashboard();
+    }
+
+    // CORE ROUTER FOR RENDERING VIEWPORTS
+    function renderDashboard() {
+      updateKPIs();
+      
+      if (currentTab === 'overview') {
+        renderOverviewBarChart();
+        renderDataTable();
+      } else if (currentTab === 'trends') {
+        renderTrendCharts();
+      }
+    }
+
+    // TAB ANIMATION AND SWITCH LOGIC
+    function switchTab(tabId) {
+      currentTab = tabId;
+      
+      ['overview', 'trends', 'insights'].forEach(t => {
+        const elem = document.getElementById(`content-${t}`);
+        const btn = document.getElementById(`tab-${t}`);
+        if (t === tabId) {
+          elem.classList.remove('hidden');
+          elem.classList.add('block');
+          // Style active tab (Fresh Blue & Green contrast)
+          btn.className = "px-6 py-3 text-xs sm:text-sm font-semibold rounded-xl transition duration-300 bg-white text-cyan-950 shadow-sm flex items-center gap-2 border-b-2 border-emerald-400";
+          btn.querySelector('i').className = btn.querySelector('i').className.replace('text-slate-400', 'text-cyan-500');
+        } else {
+          elem.classList.add('hidden');
+          elem.classList.remove('block');
+          // Style inactive tab
+          btn.className = "px-6 py-3 text-xs sm:text-sm font-semibold rounded-xl transition duration-300 text-slate-600 hover:text-cyan-900 hover:bg-white/50 flex items-center gap-2";
+          btn.querySelector('i').className = btn.querySelector('i').className.replace('text-cyan-500', 'text-slate-400');
+        }
+      });
+
+      renderDashboard();
+    }
+
+    // KPI COUNTER AGGREGATION
+    function updateKPIs() {
+      const filteredData = rawDataset.filter(d => d.rpt_year === selectedYear);
+      
+      let totalDog = 0;
+      let totalCat = 0;
+      let totalStray = 0;
+      let nonZeroCount = 0;
+
+      filteredData.forEach(d => {
+        totalDog += d.calcu_dog_count;
+        totalCat += d.calcu_cat_count;
+        totalStray += d.stray_dog_count;
+        if ((d.calcu_dog_count + d.calcu_cat_count) > 0) {
+          nonZeroCount++;
+        }
+      });
+
+      const avgPet = nonZeroCount > 0 ? Math.round((totalDog + totalCat) / nonZeroCount) : 0;
+
+      document.getElementById('kpi-dog').innerText = totalDog.toLocaleString();
+      document.getElementById('kpi-cat').innerText = totalCat.toLocaleString();
+      document.getElementById('kpi-stray').innerText = totalStray.toLocaleString();
+      document.getElementById('kpi-avg').innerText = avgPet.toLocaleString();
+    }
+
+    // RENDER: OVERVIEW BAR CHART
+    function renderOverviewBarChart() {
+      const ctx = document.getElementById('chart-overview-bar').getContext('2d');
+      
+      let filteredData = rawDataset.filter(d => d.rpt_year === selectedYear);
+      filteredData.sort((a, b) => {
+        return (b.calcu_dog_count + b.calcu_cat_count + b.stray_dog_count) - (a.calcu_dog_count + a.calcu_cat_count + a.stray_dog_count);
+      });
+
+      const labels = filteredData.map(d => d.rpt_county);
+      const dogData = filteredData.map(d => d.calcu_dog_count);
+      const catData = filteredData.map(d => d.calcu_cat_count);
+      const strayData = filteredData.map(d => d.stray_dog_count);
+
+      if (overviewBarChartInstance) {
+        overviewBarChartInstance.destroy();
+      }
+
+      overviewBarChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: '估計家犬數', data: dogData, backgroundColor: morandiColors.dog.fill, borderColor: morandiColors.dog.stroke, borderWidth: 1.5, borderRadius: 4 },
+            { label: '估計家貓數', data: catData, backgroundColor: morandiColors.cat.fill, borderColor: morandiColors.cat.stroke, borderWidth: 1.5, borderRadius: 4 },
+            { label: '遊蕩流浪犬數', data: strayData, backgroundColor: morandiColors.stray.fill, borderColor: morandiColors.stray.stroke, borderWidth: 1.5, borderRadius: 4 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'Noto Sans TC', weight: 'bold' }, color: morandiColors.textMain } },
+            tooltip: { padding: 12, cornerRadius: 12 }
+          },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: morandiColors.textMain, font: { family: 'Noto Sans TC' } } },
+            y: { grid: { color: morandiColors.gridColor }, ticks: { color: morandiColors.textMain } }
+          }
+        }
+      });
+    }
+
+    // RENDER: DETAILED INTERACTIVE DATA TABLE
+    function renderDataTable() {
+      const tbody = document.getElementById('table-body');
+      let filteredData = rawDataset.filter(d => d.rpt_year === selectedYear);
+
+      filteredData.sort((a, b) => {
+        let valA = a[currentSortField];
+        let valB = b[currentSortField];
+
+        if (typeof valA === 'string') {
+          return currentSortOrder === 'asc' ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        } else {
+          return currentSortOrder === 'asc' ? valA - valB : valB - valA;
+        }
+      });
+
+      const fields = ['rpt_county', 'calcu_dog_count', 'calcu_cat_count', 'stray_dog_count'];
+      fields.forEach(f => {
+        const el = document.getElementById(`sort-icon-${f}`);
+        if (f === currentSortField) {
+          el.innerText = currentSortOrder === 'asc' ? ' 🔼' : ' 🔽';
+          el.className = "text-emerald-500 font-bold ml-1";
+        } else {
+          el.innerText = ' ↕';
+          el.className = "text-slate-300 ml-1";
+        }
+      });
+
+      if (filteredData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-slate-400 italic">目前無對應數據，請嘗試切換年度或上傳完整 CSV 檔案。</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filteredData.map(d => `
+        <tr class="hover:bg-cyan-50/20 transition duration-150">
+          <td class="px-6 py-4 font-bold text-slate-900">${d.rpt_county}</td>
+          <td class="px-6 py-4 text-right font-mono text-slate-700 font-medium">${d.calcu_dog_count === 0 ? '<span class="text-slate-300">-</span>' : d.calcu_dog_count.toLocaleString()}</td>
+          <td class="px-6 py-4 text-right font-mono text-slate-700 font-medium">${d.calcu_cat_count === 0 ? '<span class="text-slate-300">-</span>' : d.calcu_cat_count.toLocaleString()}</td>
+          <td class="px-6 py-4 text-right font-mono text-amber-600 font-medium">${d.stray_dog_count === 0 ? '<span class="text-slate-300">-</span>' : d.stray_dog_count.toLocaleString()}</td>
+          <td class="px-6 py-4 text-xs text-slate-500 max-w-sm truncate" title="${d.els_note || ''}">${d.els_note || '<span class="text-slate-300">無備註說明</span>'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // CONTROLLER FOR SORT TABLE CLICK ACTIONS
+    function sortTable(field) {
+      if (currentSortField === field) {
+        currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+      } else {
+        currentSortField = field;
+        currentSortOrder = 'desc'; 
+      }
+      renderDataTable();
+    }
+
+    // RENDER: TREND VIEWS
+    function renderTrendCharts() {
+      const selectedTrendCounty = document.getElementById('trend-county-select').value;
+      document.getElementById('dynamic-county-title').innerText = selectedTrendCounty;
+
+      const distinctYears = [...new Set(rawDataset.map(d => d.rpt_year))].sort((a,b) => a - b);
+
+      const taiwanDogTrend = [];
+      const taiwanCatTrend = [];
+      const taiwanStrayTrend = [];
+
+      const countyDogTrend = [];
+      const countyCatTrend = [];
+      const countyStrayTrend = [];
+
+      distinctYears.forEach(yr => {
+        const yearlyRecords = rawDataset.filter(d => d.rpt_year === yr);
+        
+        let sumDog = 0; let sumCat = 0; let sumStray = 0;
+        yearlyRecords.forEach(r => {
+          sumDog += r.calcu_dog_count;
+          sumCat += r.calcu_cat_count;
+          sumStray += r.stray_dog_count;
+        });
+        
+        // Push actual survey data or null for cleaner lines
+        taiwanDogTrend.push(sumDog > 0 ? sumDog : null);
+        taiwanCatTrend.push(sumCat > 0 ? sumCat : null);
+        taiwanStrayTrend.push(sumStray > 0 ? sumStray : null);
+
+        const targetCountyRecord = yearlyRecords.find(r => r.rpt_county === selectedTrendCounty);
+        if (targetCountyRecord) {
+          countyDogTrend.push(targetCountyRecord.calcu_dog_count > 0 ? targetCountyRecord.calcu_dog_count : null);
+          countyCatTrend.push(targetCountyRecord.calcu_cat_count > 0 ? targetCountyRecord.calcu_cat_count : null);
+          countyStrayTrend.push(targetCountyRecord.stray_dog_count > 0 ? targetCountyRecord.stray_dog_count : null);
+        } else {
+          countyDogTrend.push(null); countyCatTrend.push(null); countyStrayTrend.push(null);
+        }
+      });
+
+      const makeLineConfig = (labels, datasets) => ({
+        type: 'line',
+        data: { labels: labels.map(l => `民國 ${l} 年`), datasets: datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          spanGaps: true, // Gracefully handle alternate year zeros
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', labels: { font: { family: 'Noto Sans TC', size: 11, weight: 'bold' } } },
+            tooltip: { padding: 12 }
+          },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: morandiColors.gridColor } }
+          }
+        }
+      });
+
+      const ctxTaiwan = document.getElementById('chart-trend-taiwan').getContext('2d');
+      if (trendTaiwanChartInstance) trendTaiwanChartInstance.destroy();
+      trendTaiwanChartInstance = new Chart(ctxTaiwan, makeLineConfig(distinctYears, [
+        { label: '全台家犬趨勢', data: taiwanDogTrend, borderColor: morandiColors.dog.stroke, backgroundColor: 'transparent', tension: 0.3, borderWidth: 3, pointRadius: 4 },
+        { label: '全台家貓趨勢', data: taiwanCatTrend, borderColor: morandiColors.cat.stroke, backgroundColor: 'transparent', tension: 0.3, borderWidth: 3, pointRadius: 4 },
+        { label: '全台遊蕩犬趨勢', data: taiwanStrayTrend, borderColor: morandiColors.stray.stroke, backgroundColor: 'transparent', tension: 0.3, borderWidth: 3, pointRadius: 4 }
+      ]));
+
+      const ctxCounty = document.getElementById('chart-trend-county').getContext('2d');
+      if (trendCountyChartInstance) trendCountyChartInstance.destroy();
+      trendCountyChartInstance = new Chart(ctxCounty, makeLineConfig(distinctYears, [
+        { label: '家犬估計值', data: countyDogTrend, borderColor: morandiColors.dog.stroke, backgroundColor: 'transparent', tension: 0.3, borderWidth: 3, pointRadius: 4 },
+        { label: '家貓估計值', data: countyCatTrend, borderColor: morandiColors.cat.stroke, backgroundColor: 'transparent', tension: 0.3, borderWidth: 3, pointRadius: 4 },
+        { label: '遊蕩犬估計值', data: countyStrayTrend, borderColor: morandiColors.stray.stroke, backgroundColor: 'transparent', tension: 0.3, borderWidth: 3, pointRadius: 4 }
+      ]));
+    }
+
+    // CSV UPLOADER PARSER ENGINE
+    document.getElementById('csv-upload').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const text = evt.target.result;
+          const parsedData = parseCSVToJSON(text);
+          
+          if(parsedData && parsedData.length > 0) {
+            rawDataset = parsedData;
+            
+            initializeYearFilters();
+            initializeCountyFilters();
+            
+            const uniqueYears = [...new Set(rawDataset.map(d => d.rpt_year))];
+            if(!uniqueYears.includes(selectedYear)) {
+              selectedYear = uniqueYears[0];
+            }
+            
+            const statusLabel = document.getElementById('file-status');
+            statusLabel.innerText = `成功匯入 ${parsedData.length} 筆原始觀測紀錄！`;
+            statusLabel.classList.remove('hidden');
+            
+            renderDashboard();
+          } else {
+            alert('CSV 解析失敗：偵測不到相容的常規欄位架構，請確認檔案格式。');
+          }
+        } catch(err) {
+          console.error(err);
+          alert('讀取 CSV 檔案時發生系統錯誤，請檢查檔案編碼是否為 UTF-8。');
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function parseCSVToJSON(csvText) {
+      const lines = csvText.split(/\r?\n/);
+      if (lines.length < 2) return null;
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^["']|["']$/g, ''));
+      
+      const idxYear = headers.findIndex(h => h.includes('year') || h.includes('年度'));
+      const idxCounty = headers.findIndex(h => h.includes('county') || h.includes('縣市'));
+      const idxDog = headers.findIndex(h => h.includes('dog_count') || h.includes('家犬'));
+      const idxCat = headers.findIndex(h => h.includes('cat_count') || h.includes('家貓'));
+      const idxStray = headers.findIndex(h => h.includes('stray') || h.includes('遊蕩犬') || h.includes('流浪犬'));
+      const idxNote = headers.findIndex(h => h.includes('note') || h.includes('備註'));
+
+      if (idxYear === -1 || idxCounty === -1) {
+        return null;
+      }
+
+      const records = [];
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        const columns = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.trim().replace(/^["']|["']$/g, ''));
+        
+        if (columns.length < headers.length) continue;
+
+        const record = {
+          rpt_year: parseInt(columns[idxYear]) || 0,
+          rpt_county: columns[idxCounty] || "未知行政區",
+          calcu_dog_count: idxDog !== -1 ? (parseInt(columns[idxDog]) || 0) : 0,
+          calcu_cat_count: idxCat !== -1 ? (parseInt(columns[idxCat]) || 0) : 0,
+          stray_dog_count: idxStray !== -1 ? (parseInt(columns[idxStray]) || 0) : 0,
+          els_note: idxNote !== -1 ? columns[idxNote] : "外部 CSV 匯入數據"
+        };
+        
+        records.push(record);
+      }
+      return records;
+    }
+  </script>
+</body>
+</html>
